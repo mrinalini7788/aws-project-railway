@@ -71,9 +71,9 @@ resource "aws_eks_node_group" "eks_nodegroup" {
   node_role_arn   = aws_iam_role.eks_node_role.arn
   subnet_ids      = var.subnet_ids
 
-  # FORCE AMAZON LINUX 2 TO FIX THE "MISSING NODES" ISSUE
   ami_type       = "AL2_x86_64"
   instance_types = ["t2.medium"]
+  disk_size      = 40
 
   scaling_config {
     desired_size = 2
@@ -81,29 +81,7 @@ resource "aws_eks_node_group" "eks_nodegroup" {
     min_size     = 1
   }
 
-  # Ensure the IAM Role is fully created before the Node Group starts
-  depends_on = [
-    aws_iam_role_policy_attachment.eks_node_role_policy,
-    aws_iam_role_policy_attachment.eks_node_cni_policy,
-    aws_iam_role_policy_attachment.eks_node_ecr_policy,
-  ]
-}
-
-  scaling_config {
-    desired_size = 2
-    max_size     = 2
-    min_size     = 2
-  }
-
-  instance_types = ["t2.medium"]
-  disk_size      = 40
-
-#   # Optional SSH access
-#   remote_access {
-#     ec2_ssh_key               = var.ssh_key_name
-#     source_security_group_ids = [var.node_sg_id]
-#   }
-
+  # Fixed the names here to match your resource labels above
   depends_on = [
     aws_iam_role_policy_attachment.worker_node_policy,
     aws_iam_role_policy_attachment.cni_policy,
@@ -119,4 +97,3 @@ resource "aws_eks_addon" "ebs_csi_driver" {
 
   depends_on = [aws_eks_node_group.eks_nodegroup]
 }
-
