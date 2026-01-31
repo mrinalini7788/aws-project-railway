@@ -56,6 +56,9 @@ resource "aws_iam_role_policy_attachment" "ebs_csi_policy" {
 resource "aws_eks_cluster" "eks" {
   name     = var.cluster_name
   role_arn = aws_iam_role.eks_cluster_role.arn
+  
+  # Version 1.32 supports the AL2 AMI type we are using
+  version  = "1.32" 
 
   vpc_config {
     subnet_ids         = var.subnet_ids
@@ -71,6 +74,7 @@ resource "aws_eks_node_group" "eks_nodegroup" {
   node_role_arn   = aws_iam_role.eks_node_role.arn
   subnet_ids      = var.subnet_ids
 
+  # Using AL2 ensures the nodes use the correct bootstrap script
   ami_type       = "AL2_x86_64"
   instance_types = ["t2.medium"]
   disk_size      = 40
@@ -81,7 +85,6 @@ resource "aws_eks_node_group" "eks_nodegroup" {
     min_size     = 1
   }
 
-  # Fixed the names here to match your resource labels above
   depends_on = [
     aws_iam_role_policy_attachment.worker_node_policy,
     aws_iam_role_policy_attachment.cni_policy,
