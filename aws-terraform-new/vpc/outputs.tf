@@ -9,3 +9,4 @@ output "public_subnet_ids" {
 output "public_subnet_cidr_blocks" {
   value = aws_subnet.public_subnets[*].cidr_block
 }
+
