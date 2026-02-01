@@ -1,85 +1,45 @@
-terraform {
-  required_providers {
-    aws = {
-      source  = "hashicorp/aws"
-      version = "~> 5.0"
-    }
-    kubernetes = {
-      source  = "hashicorp/kubernetes"
-      version = "2.30.0"
-    }
-  }
+# Create the VPC
+resource "aws_vpc" "this" {
+  cidr_block           = var.vpc_cidr
+  enable_dns_hostnames = true
+  tags                 = { Name = var.vpc_name }
 }
 
-
-terraform {
-  backend "s3" {
-    bucket  = "terraformbucketforstatefiles" # create s3 bucket to store statefile
-    key     = "dev/terraform.tfstate"
-    region  = "us-east-1"
-    encrypt = false
-  }
+# Create the Internet Gateway
+resource "aws_internet_gateway" "this" {
+  vpc_id = aws_vpc.this.id
+  tags   = { Name = "${var.vpc_name}-igw" }
 }
 
-
-# Configure the AWS Provider
-provider "aws" {
-  region = "us-east-1"
+# Create Public Subnets
+resource "aws_subnet" "public" {
+  count                   = length(var.cidr_public_subnet)
+  vpc_id                  = aws_vpc.this.id
+  cidr_block              = var.cidr_public_subnet[count.index]
+  availability_zone       = var.eu_availability_zone[count.index]
+  
+  # CRITICAL: This allows the VM to get a Public IP for SSH
+  map_public_ip_on_launch = true 
+  
+  tags = { Name = "${var.vpc_name}-public-${count.index}" }
 }
 
-module "vpc" {
-  source               = "./vpc"
-  vpc_cidr             = "10.0.0.0/16"
-  vpc_name             = "project-vpc"
-  cidr_public_subnet   = ["10.0.1.0/24", "10.0.2.0/24"]
-  eu_availability_zone = ["us-east-1a", "us-east-1b"]
+# Create the Route Table
+resource "aws_route_table" "public" {
+  vpc_id = aws_vpc.this.id
+  tags   = { Name = "${var.vpc_name}-public-rt" }
 }
 
-module "security_group" {
-  source                   = "./security-groups"
-  ec2_sg_name              = "SG for EC2 to enable SSH(22) and HTTP(80)"
-  vpc_id                   = module.vpc.vpc_id
-  public_subnet_cidr_block = module.vpc.public_subnet_cidr_blocks
+# ADD THE ROUTE (This is likely what's missing!)
+resource "aws_route" "internet_access" {
+  route_table_id         = aws_route_table.public.id
+  destination_cidr_block = "0.0.0.0/0"
+  gateway_id             = aws_internet_gateway.this.id
 }
 
-module "ec2" {
-  source             = "./ec2"
-  ami_id             = "ami-04b4f1a9cf54c11d0" # Ubuntu 22.04 (us-east-1)
-  instance_type      = "t2.micro"
-  subnet_id          = element(module.vpc.public_subnet_ids, 0)
-  security_group_ids = [module.security_group.sg_ec2_sg_ssh_http_id]
-  key_name           = "project-keypair2025"  # create keypair manually & update name here
+# Associate Subnets with the Public Route Table
+resource "aws_route_table_association" "public" {
+  count          = length(var.cidr_public_subnet)
+  subnet_id      = aws_subnet.public[count.index].id
+  route_table_id = aws_route_table.public.id
 }
-
-module "eks" {
-  source                 = "./eks"
-  cluster_name           = "my-eks-cluster"
-  subnet_ids             = module.vpc.public_subnet_ids
-  cluster_sg_id          = module.security_group.eks_cluster_sg_id
-  node_sg_id             = module.security_group.eks_node_sg_id
-  ssh_key_name           = "deployer-key"
-  ebs_csi_driver_version = "v1.40.1-eksbuild.1"
-}
-
-module "rds" {
-  source                  = "./rds"
-  db_identifier           = "my-rds-instance"
-  db_name                 = "appdb"
-  db_username             = "railway"
-  db_password             = "Railwaypassword123" 
-  db_subnet_ids           = module.vpc.public_subnet_ids
-  db_subnet_group_name    = "rds-subnet-group"
-  security_group_id       = module.security_group.rds_mysql_sg_id
-  allocated_storage       = 20
-  storage_type            = "gp2"
-  engine                  = "MySQL"
-  engine_version          = "8.0.41"
-  instance_class          = "db.t3.micro"
-  backup_retention_period = 0
-}
-
-
-
-
-
-
