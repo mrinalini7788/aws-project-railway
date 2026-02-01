@@ -1,4 +1,3 @@
-# 1. Required Terraform & Provider Version
 terraform {
   required_providers {
     aws = {
@@ -6,7 +5,6 @@ terraform {
       version = "~> 5.0"
     }
   }
-  
   backend "s3" {
     bucket  = "terraformbucketforstatefiles"
     key     = "dev/terraform.tfstate"
@@ -15,12 +13,11 @@ terraform {
   }
 }
 
-# 2. THE MISSING PIECE: AWS Provider Configuration
 provider "aws" {
-  region = "us-east-1" 
+  region = "us-east-1"
 }
 
-# 3. Your Module Calls (VPC, Security Group, EC2)
+# 1. Network
 module "vpc" {
   source               = "./vpc"
   vpc_cidr             = "10.0.0.0/16"
@@ -29,13 +26,15 @@ module "vpc" {
   eu_availability_zone = ["us-east-1a", "us-east-1b"]
 }
 
+# 2. Security
 module "security_group" {
   source                   = "./security-groups"
   vpc_id                   = module.vpc.vpc_id
-  ec2_sg_name              = "project-ec2-sg"
+  ec2_sg_name              = "SG for EC2"
   public_subnet_cidr_block = ["10.0.1.0/24", "10.0.2.0/24"]
 }
 
+# 3. Jump Server (EC2)
 module "ec2" {
   source             = "./ec2"
   ami_id             = "ami-04b4f1a9cf54c11d0"
@@ -43,4 +42,33 @@ module "ec2" {
   subnet_id          = module.vpc.public_subnet_ids[0]
   security_group_ids = [module.security_group.sg_ec2_sg_ssh_http_id]
   key_name           = "project-keypair2025"
+}
+
+# 4. EKS Cluster
+module "eks" {
+  source                 = "./eks"
+  cluster_name           = "my-eks-cluster"
+  subnet_ids             = module.vpc.public_subnet_ids
+  cluster_sg_id          = module.security_group.eks_cluster_sg_id
+  node_sg_id             = module.security_group.eks_node_sg_id
+  ssh_key_name           = "project-keypair2025"
+  ebs_csi_driver_version = "v1.40.1-eksbuild.1"
+}
+
+# 5. RDS Database
+module "rds" {
+  source                  = "./rds"
+  db_identifier           = "my-rds-instance"
+  db_name                 = "appdb"
+  db_username             = "railway"
+  db_password             = "Railwaypassword123" 
+  db_subnet_ids           = module.vpc.public_subnet_ids
+  db_subnet_group_name    = "rds-subnet-group"
+  security_group_id       = module.security_group.rds_mysql_sg_id
+  allocated_storage       = 20
+  storage_type            = "gp2"
+  engine                  = "MySQL"
+  engine_version          = "8.0.41"
+  instance_class          = "db.t3.micro"
+  backup_retention_period = 0
 }
