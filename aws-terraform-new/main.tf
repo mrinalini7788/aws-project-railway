@@ -1,4 +1,26 @@
-# 1. VPC Module
+# 1. Required Terraform & Provider Version
+terraform {
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = "~> 5.0"
+    }
+  }
+  
+  backend "s3" {
+    bucket  = "terraformbucketforstatefiles"
+    key     = "dev/terraform.tfstate"
+    region  = "us-east-1"
+    encrypt = false
+  }
+}
+
+# 2. THE MISSING PIECE: AWS Provider Configuration
+provider "aws" {
+  region = "us-east-1" 
+}
+
+# 3. Your Module Calls (VPC, Security Group, EC2)
 module "vpc" {
   source               = "./vpc"
   vpc_cidr             = "10.0.0.0/16"
@@ -7,7 +29,6 @@ module "vpc" {
   eu_availability_zone = ["us-east-1a", "us-east-1b"]
 }
 
-# 2. Security Group Module (THIS IS THE MISSING PIECE)
 module "security_group" {
   source                   = "./security-groups"
   vpc_id                   = module.vpc.vpc_id
@@ -15,7 +36,6 @@ module "security_group" {
   public_subnet_cidr_block = ["10.0.1.0/24", "10.0.2.0/24"]
 }
 
-# 3. EC2 Module (Now it can find the security_group module)
 module "ec2" {
   source             = "./ec2"
   ami_id             = "ami-04b4f1a9cf54c11d0"
