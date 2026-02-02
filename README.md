@@ -14,6 +14,8 @@ we've build a **Two-Tier web application** where:
 - User input details (Name, Source, Destination, Food Preference) via the **frontend**.
 
 - Data is securely sent to the **backend** and stored in an **AWS RDS MySQL database**.
+  
+
 
 ### Architecture Highlights:
 
@@ -34,6 +36,8 @@ https://github.com/vijaygiduthuri/aws-2-tier-helm-chart.git
 - Infrastructure-as-code with **Terraform**
 
 - Continuous delivery with **Argocd**
+- <img width="1702" height="351" alt="Screenshot 2026-02-02 at 10 58 37 AM" src="https://github.com/user-attachments/assets/6bb10561-4a13-425e-8f81-f6e4c523b34e" />
+
 
 - Domain setup via **GoDaddy** and secure HTTPS access with **TLS certificates**.
 
@@ -53,6 +57,8 @@ https://github.com/vijaygiduthuri/aws-2-tier-helm-chart.git
 - Runs **Trivy** scans on Docker images for vulnerabilities.
 
 - Clones Helm Chart repo and updated image tags dynamically.
+- <img width="1690" height="421" alt="Screenshot 2026-02-01 at 5 03 34 PM" src="https://github.com/user-attachments/assets/4f09079d-7b50-4063-beaf-b74e573d92e2" />
+
 
 
 **Pipeline 2 -> Infrastructure Provisioning:**
@@ -64,6 +70,7 @@ https://github.com/vijaygiduthuri/aws-2-tier-helm-chart.git
 - Install **Nginx Ingress Controller** and maps the Load Balancer DNS to a **Godaddy Domain**.
 
 - Secures the domain with **TLS/HTTPS** using **cert-manager**.
+<img width="1033" height="545" alt="Screenshot 2026-02-01 at 5 05 01 PM" src="https://github.com/user-attachments/assets/e92d9566-8b50-488b-a4b9-42ec3413e046" />
 
 
 ### Final Output:
@@ -74,7 +81,7 @@ https://github.com/vijaygiduthuri/aws-2-tier-helm-chart.git
 <img width="1919" height="828" alt="Screenshot 2025-07-16 162354" src="https://github.com/user-attachments/assets/15005bfb-738a-4e5b-baad-0302987477d0" />
 
 
-![image](https://github.com/user-attachments/assets/d532c636-c88b-412b-b069-3c678bb6e0f7)
+
 
 ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
@@ -92,12 +99,12 @@ https://github.com/vijaygiduthuri/aws-2-tier-helm-chart.git
 
 ```
 cd frontend
-docker build -t frontend:latest
+docker build -t frontend:latest .
 docker tag frontend:latest 657001761946.dkr.ecr.us-east-1.amazonaws.com/frontend-repo:latest
 docker push 657001761946.dkr.ecr.us-east-1.amazonaws.com/frontend-repo:latest
 
-cd backend
-docker build -t backend:latest
+cd ../backend
+docker build -t backend:latest .
 docker tag backend:latest 657001761946.dkr.ecr.us-east-1.amazonaws.com/backend-repo:latest
 docker push 657001761946.dkr.ecr.us-east-1.amazonaws.com/backend-repo:latest
 ```
@@ -125,7 +132,7 @@ kubectl get all
 
 ```
 sudo apt install -y mysql-client
-mysql -h <RDS-endpoint> -u vijay -p
+mysql -h <RDS-endpoint> -u railway -p
 ```
 
   - Example:
@@ -139,8 +146,8 @@ use appdb;
 show tables;
 select * from bookings;
 ```
+<img width="499" height="97" alt="Screenshot 2026-02-02 at 12 33 10 PM" src="https://github.com/user-attachments/assets/f88e4f3f-9a5c-4b2d-8144-62fc6fd554f1" />
 
-![image](https://github.com/user-attachments/assets/d532c636-c88b-412b-b069-3c678bb6e0f7)
 
 
 **7. To Destroy entire resources:**
